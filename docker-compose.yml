@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: proofrail-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: proofrail_db
+      MYSQL_USER: proofrail
+      MYSQL_PASSWORD: proofrailpassword
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 5s
+      retries: 10
+
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: proofrail-server
+    environment:
+      PORT: 8080
+      DB_DRIVER: mysql
+      DB_DSN: "proofrail:proofrailpassword@tcp(mysql:3306)/proofrail_db?charset=utf8mb4&parseTime=True&loc=Local"
+      JWT_SECRET: "proofrail-docker-jwt-secret-2026-hackathon"
+      PAYPAL_BASE_URL: "https://api-m.sandbox.paypal.com"
+      PAYPAL_CLIENT_ID: "${PAYPAL_CLIENT_ID:-}"
+      PAYPAL_CLIENT_SECRET: "${PAYPAL_CLIENT_SECRET:-}"
+      APP_URL: "http://localhost:5173"
+      STORAGE_DIR: "./uploads"
+    ports:
+      - "8080:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    container_name: proofrail-client
+    ports:
+      - "5173:80"
+    depends_on:
+      - server
+
+volumes:
+  mysql_data:
+

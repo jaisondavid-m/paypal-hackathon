@@ -1,0 +1,93 @@
+{
+  "info": {
+    "name": "ProofRail AI API",
+    "description": "PayPal AI Hackathon - Promise-to-Proof Transaction Evidence Management",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/health"
+      }
+    },
+    {
+      "name": "Demo Seeder",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/demo/seed"
+      }
+    },
+    {
+      "name": "Auth - Register",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Jaison Dev\",\n  \"email\": \"jaison@example.com\",\n  \"password\": \"password123\",\n  \"business_name\": \"Jaison Digital Studio\"\n}"
+        },
+        "url": "{{base_url}}/api/auth/register"
+      }
+    },
+    {
+      "name": "Auth - Login",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"demo@proofrail.ai\",\n  \"password\": \"demo123456\"\n}"
+        },
+        "url": "{{base_url}}/api/auth/login"
+      }
+    },
+    {
+      "name": "Transactions - List",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }],
+        "url": "{{base_url}}/api/transactions"
+      }
+    },
+    {
+      "name": "AI - Extract Agreement Terms",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{jwt_token}}" },
+          { "key": "Content-Type", "value": "application/json" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"raw_text\": \"Hi Jaison, I need a business website with five pages, contact form, and dashboard. Budget is $2,000 USD. Delivery within 20 days.\"\n}"
+        },
+        "url": "{{base_url}}/api/ai/extract-agreement"
+      }
+    },
+    {
+      "name": "Evidence - Analyze Gaps",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }],
+        "url": "{{base_url}}/api/transactions/{{transaction_id}}/evidence/analyze"
+      }
+    },
+    {
+      "name": "Disputes - Generate Source-Grounded Report",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{jwt_token}}" }],
+        "url": "{{base_url}}/api/disputes/{{dispute_id}}/report"
+      }
+    }
+  ],
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8080" },
+    { "key": "jwt_token", "value": "" },
+    { "key": "transaction_id", "value": "" },
+    { "key": "dispute_id", "value": "" }
+  ]
+}
+

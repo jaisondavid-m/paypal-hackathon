@@ -2,10 +2,61 @@
 ### Turn every business promise into verifiable delivery evidence.
 
 > **The trust layer between a business promise and a payment.**
+> *From what was promised to what can be proven.*
 
-ProofRail AI helps freelancers and small businesses document what they promised, what the customer approved, what they delivered, and what happened to the payment.
+---
 
-When a payment dispute occurs, ProofRail turns scattered transaction records into an organised, dispute-specific evidence package — with AI assistance and merchant approval.
+## 🌟 What Makes This Different
+
+- **Pre-dispute health checks, not post-dispute panic.** Rather than scrambling when a dispute hits weeks later, ProofRail continuously audits agreements, PayPal capture IDs, delivery domains, and visual evidence before delivery to ensure dispute defensibility.
+- **Real PayPal Disputes API integration with webhook verification.** Directly queries `/v1/customer/disputes`, maps evidentiary pillars to PayPal dispute requirements, and submits evidence via `/v1/customer/disputes/{id}/provide-evidence` backed by HMAC signature-verified webhooks.
+- **AI recommends, backend validates, merchant approves — AI never moves money.** Amounts and currencies originate strictly from approved database agreement rows. Request bodies attempting to set financial values are aborted by backend guard middleware.
+
+---
+
+## 🏆 Sponsor Tools Used
+
+- **AG Grid Community**: High-performance interactive data tables powering the Transactions Ledger, Cryptographic Evidence Vault, and Audit Trail Log with sorting, filtering, quick search, and one-click CSV export.
+
+---
+
+## ⚡ Quick Start (Run Locally in Under 60 Seconds)
+
+### Option 1: Native Run (Server + Client)
+
+**1. Start the Go Server:**
+```bash
+cd server
+cp .env.example .env     # (On Windows PowerShell: Copy-Item .env.example .env)
+cp .env.example .env     # (On Windows PowerShell: Copy-Item .env.example .env)
+go run cmd/server/main.go
+# API runs on http://localhost:8080 (SQLite zero-config proofrail.db or local MySQL)
+```
+
+**2. Start the Vite React Client:**
+```bash
+cd client
+cp .env.example .env     # (On Windows PowerShell: Copy-Item .env.example .env)
+cp .env.example .env     # (On Windows PowerShell: Copy-Item .env.example .env)
+npm install
+npm run dev
+# App runs on http://localhost:5173
+```
+
+**3. Instant 1-Click Judge Demo:**
+- Open `http://localhost:5173`
+- Click **"Explore 3-Minute Demo"** or log in with:
+  - **Email:** `demo@proofrail.ai`
+  - **Password:** `demo123456`
+- Instantly experience the pre-seeded $2,000 Alex Morgan website project with structured agreements, customer approval, PayPal capture, SHA-256 evidence vault, gap analysis, and 12-section source-grounded dispute dossier!
+
+---
+
+### Option 2: Docker Compose
+```bash
+docker compose up --build
+# Client on http://localhost:5173, Server on http://localhost:8080, MySQL on port 3306
+```
 
 ---
 
@@ -457,15 +508,18 @@ Use the existing Go and React ecosystem. Do not introduce unnecessary services o
  AI Dispute Report
 ```
 
-### Important design principle
+### Important design principle & Security Boundary
 
-AI should assist the business workflow, not control financial operations.
+**AI assists; it does not move money.**
 
+- **LLM outputs are treated as untrusted. They are validated against a JSON schema and never used to authorize, create, or capture payments.**
+- **AMOUNT AND CURRENCY ARE READ FROM THE APPROVED AGREEMENT. NEVER FROM LLM OR FRONTEND.**
+- Request bodies attempting to set `amount`, `currency`, `total`, or `value` on PayPal order routes are rejected with HTTP 400 by backend guard middleware.
 - AI extracts and recommends.
 - Backend validates.
 - Merchant approves.
 - PayPal processes payments.
-- Database records the events.
+- Database records the immutable events.
 
 Never allow an LLM to directly execute arbitrary SQL, choose payment amounts or submit dispute evidence without an explicit merchant action.
 
@@ -1163,7 +1217,15 @@ The most important product proof is that ProofRail helps a merchant organise evi
 
 ---
 
-## 18. Future Roadmap
+## 18. Known Limitations
+
+- **PayPal Sandbox Environment**: The application runs exclusively in the PayPal Sandbox environment with developer test credentials (`https://api-m.sandbox.paypal.com`). No live financial accounts are debited or credited.
+- **Simulated Dispute Fallback**: When the connected PayPal developer account has no active buyer disputes filed in the sandbox, ProofRail provides a fallback workspace clearly badged in the UI: `SIMULATED DISPUTE — NOT A REAL PAYPAL DISPUTE`. When live sandbox disputes exist, the real PayPal Disputes REST API is the primary flow.
+- **Evidentiary Assistance, Not Legal Enforceability**: ProofRail organizes contemporaneous evidence to satisfy PayPal Seller Protection requirements. It does not provide legal representation, warranty, or guarantee of dispute adjudication outcomes.
+
+---
+
+## 19. Future Roadmap
 
 After the hackathon, ProofRail can evolve into a broader transaction trust infrastructure.
 

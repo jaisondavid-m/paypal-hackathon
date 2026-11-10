@@ -1,0 +1,33 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-bg: #F7F9FC;
+  --color-brand-surface: #FFFFFF;
+  --color-brand-surface-muted: #F1F4F8;
+  --color-brand-text: #172033;
+  --color-brand-muted: #667085;
+  --color-brand-border: #E4E9F0;
+  
+  --color-brand-primary: #175CD3;
+  --color-brand-primary-hover: #1849A9;
+  --color-brand-primary-soft: #EFF6FF;
+  
+  --color-brand-success: #067647;
+  --color-brand-success-soft: #ECFDF3;
+  --color-brand-warning: #B54708;
+  --color-brand-warning-soft: #FFFAEB;
+  --color-brand-danger: #B42318;
+  --color-brand-danger-soft: #FEF3F2;
+}
+
+:root {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: #172033;
+  background-color: #F7F9FC;
+  font-feature-settings: 'tnum' on, 'lnum' on;
+}
+
+/* Tabular numerals for financial and ID figures */
+.font-tabular {
+  font-variant-numeric: tabular-nums;
+}
