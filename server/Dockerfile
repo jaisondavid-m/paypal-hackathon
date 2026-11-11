@@ -1,5 +1,5 @@
 # Backend Dockerfile
-FROM golang:1.24-alpine AS builder
+FROM golang:alpine AS builder
 
 # Install build essentials and certs
 RUN apk add --no-cache git ca-certificates
