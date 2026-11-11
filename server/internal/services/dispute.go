@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
+	"proofrail-backend/internal/database"
 	"proofrail-backend/internal/infra"
 	"proofrail-backend/internal/models"
 )
@@ -103,7 +104,17 @@ func (s *DisputeService) ListDisputes(userID string) ([]models.Dispute, error) {
 		}
 	}
 
-	// 2. Query Relational Database
+	// 2. Auto-seed if user has no transactions yet
+	var txCount int64
+	s.db.Model(&models.Transaction{}).Where("user_id = ?", userID).Count(&txCount)
+	if txCount == 0 {
+		var user models.User
+		if err := s.db.Where("id = ?", userID).First(&user).Error; err == nil {
+			database.SeedComprehensiveTransactionsForUser(s.db, user)
+		}
+	}
+
+	// 3. Query Relational Database
 	var disputes []models.Dispute
 	err := s.db.Joins("JOIN transactions ON transactions.id = disputes.transaction_id").
 		Where("transactions.user_id = ?", userID).
@@ -114,7 +125,7 @@ func (s *DisputeService) ListDisputes(userID string) ([]models.Dispute, error) {
 		return nil, err
 	}
 
-	// 3. Cache result for 60 seconds
+	// 4. Cache result for 60 seconds
 	if s.redis != nil && s.redis.IsAvailable() && len(disputes) > 0 {
 		_ = s.redis.Set(context.Background(), cacheKey, disputes, 60*time.Second)
 	}

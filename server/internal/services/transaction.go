@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
+	"proofrail-backend/internal/database"
 	"proofrail-backend/internal/models"
 )
 
@@ -104,6 +105,16 @@ func (s *TransactionService) Create(userID string, input CreateTransactionInput)
 }
 
 func (s *TransactionService) List(userID string, statusFilter, search string) ([]models.Transaction, error) {
+	// Auto-seed on the fly if the user has no transactions yet (e.g. fresh login/registration)
+	var count int64
+	s.db.Model(&models.Transaction{}).Where("user_id = ?", userID).Count(&count)
+	if count == 0 {
+		var user models.User
+		if err := s.db.Where("id = ?", userID).First(&user).Error; err == nil {
+			database.SeedComprehensiveTransactionsForUser(s.db, user)
+		}
+	}
+
 	query := s.db.Where("user_id = ?", userID).Preload("Agreements").Preload("Payments").Preload("Disputes")
 
 	if statusFilter != "" {
@@ -214,6 +225,13 @@ func (s *TransactionService) Update(userID, id string, input UpdateTransactionIn
 func (s *TransactionService) GetDashboardMetrics(userID string) (*DashboardMetrics, error) {
 	var totalTx int64
 	s.db.Model(&models.Transaction{}).Where("user_id = ?", userID).Count(&totalTx)
+	if totalTx == 0 {
+		var user models.User
+		if err := s.db.Where("id = ?", userID).First(&user).Error; err == nil {
+			database.SeedComprehensiveTransactionsForUser(s.db, user)
+			s.db.Model(&models.Transaction{}).Where("user_id = ?", userID).Count(&totalTx)
+		}
+	}
 
 	var totalVolume float64
 	row := s.db.Model(&models.Payment{}).

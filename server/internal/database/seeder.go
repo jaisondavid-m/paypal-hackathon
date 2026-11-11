@@ -15,15 +15,19 @@ import (
 	"proofrail-backend/internal/models"
 )
 
-// SeedAllUsers checks all registered users and seeds a comprehensive transaction portfolio
-func SeedAllUsers(db *gorm.DB) {
-	// Ensure default demo user exists
+// DeterministicUUID generates a consistent RFC 4122 v5 UUID based on an input key
+func DeterministicUUID(key string) string {
+	return uuid.NewSHA1(uuid.NameSpaceDNS, []byte("proofrail:"+key)).String()
+}
+
+// EnsureDemoUser guarantees the default demo user exists with a fixed, stable ID
+func EnsureDemoUser(db *gorm.DB) models.User {
 	var demoUser models.User
 	err := db.Where("email = ?", "demo@proofrail.ai").First(&demoUser).Error
 	if err != nil {
 		hash, _ := bcrypt.GenerateFromPassword([]byte("demo123456"), bcrypt.DefaultCost)
 		demoUser = models.User{
-			ID:           uuid.New().String(),
+			ID:           "00000000-0000-4000-a000-000000000001",
 			Name:         "Jaison Dev",
 			Email:        "demo@proofrail.ai",
 			PasswordHash: string(hash),
@@ -39,6 +43,12 @@ func SeedAllUsers(db *gorm.DB) {
 		demoUser.BusinessName = "Jaison Digital Studio"
 		db.Save(&demoUser)
 	}
+	return demoUser
+}
+
+// SeedAllUsers checks all registered users and seeds a comprehensive transaction portfolio
+func SeedAllUsers(db *gorm.DB) {
+	demoUser := EnsureDemoUser(db)
 
 	// Fetch all users across the system (e.g. demo@proofrail.ai, connect@jaisondavid.in, etc.)
 	var users []models.User
@@ -729,20 +739,18 @@ func SeedComprehensiveTransactionsForUser(db *gorm.DB, user models.User) {
 			}
 		}
 
-		// Clean up existing transaction with this code for this user if exists
-		var existing models.Transaction
-		if err := db.Where("transaction_code = ?", code).First(&existing).Error; err == nil {
-			db.Exec("DELETE FROM evidence_reports WHERE transaction_id = ?", existing.ID)
-			db.Exec("DELETE FROM disputes WHERE transaction_id = ?", existing.ID)
-			db.Exec("DELETE FROM timeline_events WHERE transaction_id = ?", existing.ID)
-			db.Exec("DELETE FROM evidences WHERE transaction_id = ?", existing.ID)
-			db.Exec("DELETE FROM payments WHERE transaction_id = ?", existing.ID)
-			db.Exec("DELETE FROM customer_approvals WHERE transaction_id = ?", existing.ID)
-			db.Exec("DELETE FROM agreements WHERE transaction_id = ?", existing.ID)
-			db.Exec("DELETE FROM transactions WHERE id = ?", existing.ID)
-		}
+		txID := DeterministicUUID("tx:" + user.ID + ":" + code)
 
-		txID := uuid.New().String()
+		// Clean up existing records for this specific transaction ID or code if needed
+		db.Exec("DELETE FROM evidence_reports WHERE transaction_id = ?", txID)
+		db.Exec("DELETE FROM disputes WHERE transaction_id = ?", txID)
+		db.Exec("DELETE FROM timeline_events WHERE transaction_id = ?", txID)
+		db.Exec("DELETE FROM evidences WHERE transaction_id = ?", txID)
+		db.Exec("DELETE FROM payments WHERE transaction_id = ?", txID)
+		db.Exec("DELETE FROM customer_approvals WHERE transaction_id = ?", txID)
+		db.Exec("DELETE FROM agreements WHERE transaction_id = ?", txID)
+		db.Exec("DELETE FROM transactions WHERE id = ? OR (transaction_code = ? AND user_id = ?)", txID, code, user.ID)
+
 		tx := models.Transaction{
 			ID:              txID,
 			UserID:          user.ID,
@@ -770,7 +778,7 @@ func SeedComprehensiveTransactionsForUser(db *gorm.DB, user models.User) {
 		missJSON, _ := json.Marshal(s.missingInfo)
 		ambigJSON, _ := json.Marshal(s.ambiguities)
 
-		agID := uuid.New().String()
+		agID := DeterministicUUID("ag:" + user.ID + ":" + code)
 		agreement := models.Agreement{
 			ID:                   agID,
 			TransactionID:        txID,
@@ -802,7 +810,7 @@ func SeedComprehensiveTransactionsForUser(db *gorm.DB, user models.User) {
 			apprTime := time.Now().Add(s.apprDelta)
 
 			approval := models.CustomerApproval{
-				ID:               uuid.New().String(),
+				ID:               DeterministicUUID("appr:" + user.ID + ":" + code),
 				TransactionID:    txID,
 				AgreementID:      agID,
 				AgreementVersion: 1,
@@ -820,7 +828,7 @@ func SeedComprehensiveTransactionsForUser(db *gorm.DB, user models.User) {
 		// Create Payment if applicable
 		if s.hasPayment {
 			payment := models.Payment{
-				ID:              uuid.New().String(),
+				ID:              DeterministicUUID("pay:" + user.ID + ":" + code),
 				TransactionID:   txID,
 				Provider:        "PAYPAL",
 				PayPalOrderID:   s.payOrderID,
@@ -835,7 +843,7 @@ func SeedComprehensiveTransactionsForUser(db *gorm.DB, user models.User) {
 		}
 
 		// Create Evidence items
-		for _, ev := range s.evidences {
+		for idx, ev := range s.evidences {
 			var hStr string
 			if ev.url != "" {
 				h := sha256.Sum256([]byte(ev.url))
@@ -846,7 +854,7 @@ func SeedComprehensiveTransactionsForUser(db *gorm.DB, user models.User) {
 			}
 
 			evidence := models.Evidence{
-				ID:            uuid.New().String(),
+				ID:            DeterministicUUID(fmt.Sprintf("ev:%s:%s:%d", user.ID, code, idx)),
 				TransactionID: txID,
 				EvidenceType:  ev.evType,
 				FileName:      ev.fileName,
@@ -864,8 +872,9 @@ func SeedComprehensiveTransactionsForUser(db *gorm.DB, user models.User) {
 		// Create Dispute if applicable
 		if s.hasDispute {
 			due := time.Now().Add(s.dispDue)
+			disputeID := DeterministicUUID("disp:" + user.ID + ":" + code)
 			dispute := models.Dispute{
-				ID:              uuid.New().String(),
+				ID:              disputeID,
 				TransactionID:   txID,
 				PayPalDisputeID: "PP-D-" + code,
 				SourceType:      "SIMULATED",
@@ -893,7 +902,7 @@ func SeedComprehensiveTransactionsForUser(db *gorm.DB, user models.User) {
 			repJSON, _ := json.Marshal(repDetails)
 
 			rep := models.EvidenceReport{
-				ID:            uuid.New().String(),
+				ID:            DeterministicUUID("rep:" + user.ID + ":" + code),
 				TransactionID: txID,
 				DisputeID:     dispute.ID,
 				Title:         "Source-Grounded Evidence Dossier - " + code,
@@ -966,9 +975,9 @@ func SeedComprehensiveTransactionsForUser(db *gorm.DB, user models.User) {
 		})
 
 		// Create Timeline Events
-		for _, ev := range s.events {
+		for idx, ev := range s.events {
 			event := models.TimelineEvent{
-				ID:            uuid.New().String(),
+				ID:            DeterministicUUID(fmt.Sprintf("tle:%s:%s:%d", user.ID, code, idx)),
 				TransactionID: txID,
 				EventType:     ev.evType,
 				ActorType:     ev.actorType,

@@ -32,7 +32,11 @@ export const LoginPage: React.FC = () => {
     setDemoLoading(true);
     try {
       const txId = await seedDemoLogin();
-      navigate(`/transactions/${txId}`);
+      if (txId) {
+        navigate(`/transactions/${txId}`);
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to seed demo login');
     } finally {

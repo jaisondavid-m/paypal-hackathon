@@ -22,22 +22,27 @@ func NewDemoHandler(db *gorm.DB, cfg *config.Config) *DemoHandler {
 }
 
 func (h *DemoHandler) Seed(c *gin.Context) {
-	database.SeedAllUsers(h.db)
+	demoUser := database.EnsureDemoUser(h.db)
+	database.SeedComprehensiveTransactionsForUser(h.db, demoUser)
 
-	var user models.User
-	_ = h.db.Where("email = ?", "demo@proofrail.ai").First(&user)
-	token, _ := middleware.GenerateToken(user.ID, user.Email, h.cfg)
+	token, err := middleware.GenerateToken(demoUser.ID, demoUser.Email, h.cfg)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": gin.H{"code": "TOKEN_ERROR", "message": "Failed to generate demo authentication token"},
+		})
+		return
+	}
 
 	var alexTx models.Transaction
-	_ = h.db.Where("(transaction_code = 'PR-2026-9021' OR transaction_code = 'PR-DEMO-9021') AND user_id = ?", user.ID).First(&alexTx)
+	_ = h.db.Where("user_id = ? AND (transaction_code = 'PR-DEMO-9021' OR transaction_code = 'PR-2026-9021')", demoUser.ID).First(&alexTx)
 	if alexTx.ID == "" {
-		_ = h.db.Where("user_id = ? AND status = ?", user.ID, "DELIVERED").First(&alexTx)
+		_ = h.db.Where("user_id = ?", demoUser.ID).Order("created_at desc").First(&alexTx)
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"data": gin.H{
 			"message":        "All lifecycle transaction scenarios seeded successfully!",
-			"user":           user,
+			"user":           demoUser,
 			"token":          token,
 			"transaction_id": alexTx.ID,
 		},

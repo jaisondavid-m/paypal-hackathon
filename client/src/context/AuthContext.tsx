@@ -20,6 +20,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
+    let isCurrent = true;
     async function loadUser() {
       if (!token) {
         setIsLoading(false);
@@ -27,17 +28,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       try {
         const u = await api.getMe();
-        setUser(u);
+        if (isCurrent) {
+          setUser(u);
+        }
       } catch (err) {
         console.warn('Failed to load user session, logging out', err);
-        localStorage.removeItem('proofrail_token');
-        setToken(null);
-        setUser(null);
+        // Guard against race conditions: only purge if the token in storage still matches the failing request
+        if (isCurrent && localStorage.getItem('proofrail_token') === token) {
+          localStorage.removeItem('proofrail_token');
+          setToken(null);
+          setUser(null);
+        }
       } finally {
-        setIsLoading(false);
+        if (isCurrent) {
+          setIsLoading(false);
+        }
       }
     }
     loadUser();
+    return () => {
+      isCurrent = false;
+    };
   }, [token]);
 
   const login = async (email: string, pass: string) => {
