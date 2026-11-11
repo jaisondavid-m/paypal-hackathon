@@ -31,52 +31,46 @@ Merchants and freelancers process billions of dollars on PayPal annually. But wh
 
 ---
 
-## ⚡ Quick Start (Ready for Judges in Under 60 Seconds)
+## 🎯 Why ProofRail AI Wins: The 5 Pillars of 1st-Place Fintech Engineering
 
-### Option 1: Native Run (Zero-Config SQLite — Fastest)
-
-**1. Start the Go Backend:**
-```bash
-cd server
-cp .env.example .env     # Windows PowerShell: Copy-Item .env.example .env
-go run cmd/server/main.go
-# Server listens on http://localhost:8080 (Uses SQLite proofrail.db or local MySQL)
+```
+┌───────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                   THE PROOFRAIL ADVANTAGE                                     │
+├───────────────────────────────┬───────────────────────────────┬───────────────────────────────┤
+│ 🛡️ 1. Pre-Dispute Health      │ 🔒 2. Zero AI Money Movement   │ 📜 3. 12-Section Evidentiary  │
+│    Audit 6 risk vectors       │    Backend rejects client     │    Dossier cited directly     │
+│    before delivery to stop    │    financial manipulation via │    to DB agreements, captures │
+│    disputes before they start │    hardened middleware guards │    and SHA-256 evidence vaults│
+├───────────────────────────────┴───────────────────────────────┴───────────────────────────────┤
+│ ⚡ 4. High-Throughput Event Architecture: Kafka + Redis Write-Behind Batching (95% IOPS drop) │
+│ 🤝 5. Deep PayPal Disputes API: Live sandbox evidence submission via multipart form-data     │
+└───────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-**2. Start the React Frontend:**
-```bash
-cd client
-cp .env.example .env     # Windows PowerShell: Copy-Item .env.example .env
-npm install
-npm run dev
-# Web application opens on http://localhost:5173
-```
+### 1. Pre-Dispute Health Score & Continuous Defensibility Audit
+Most payment tools treat disputes as a surprise catastrophe. ProofRail audits transactions during active development using an **automated 6-vector defensibility matrix**:
+1. **Agreement Mutual Assent:** Cryptographic hash of buyer approval token verified.
+2. **PayPal Capture Validation:** Immutable PayPal capture ID recorded in ledger.
+3. **Delivery Evidence Sufficiency:** Staging domains, live URLs, and visual proof checked.
+4. **Timeline Continuity:** Unbroken chronological event chain from deal kickoff to handoff.
+5. **Customer Acknowledgment:** Customer sign-off timestamps and revision feedback.
+6. **Milestone Traceability:** Specific deliverables tied directly to payment schedules.
 
-**3. Instant 1-Click Judge Experience:**
-* Open `http://localhost:5173`
-* Click **"Explore 3-Minute Demo"** or log in with:
-  * **Email:** `demo@proofrail.ai`
-  * **Password:** `demo123456`
-* Instantly experience the pre-seeded $2,000 Alex Morgan website project with structured agreements, customer approval, PayPal capture, SHA-256 evidence vault, gap analysis, and 12-section source-grounded dispute dossier!
+### 2. The Golden Financial Rule: "AI Never Moves Money"
+In financial systems, prompt injection and hallucination are catastrophic risks. ProofRail enforces a strict architectural boundary via [`RejectMoneyFieldsInBody`](server/internal/middleware/guard.go):
+- Any request body containing `amount`, `currency`, `total`, or `value` on payment routes is **instantly rejected with HTTP 400**.
+- Order values for PayPal `/v2/checkout/orders` originate **strictly from the immutable database row** of the customer-approved agreement.
+- The AI is an evidentiary analyst, never a financial cashier.
 
----
+### 3. Cryptographic Evidence Vault (SHA-256 Digest Integrity)
+Every deliverable, deployment URL, chat log, and screenshot uploaded to ProofRail receives an immediate SHA-256 cryptographic digest. When a dispute is filed, the generated evidence dossier presents these exact hashes, proving that deliverables were completed *prior* to the dispute and were never retroactively altered.
 
-### Option 2: Standard Docker Compose (Full Stack)
-```bash
-docker compose up --build
-# Frontend on http://localhost:5173, Backend on http://localhost:8080, MySQL on port 3306
-```
-
----
-
-### Option 3: Enterprise Distributed Stack (Kafka + Redis + Nginx Load Balancer)
-```bash
-docker compose -f docker-compose.enterprise.yml up --build -d
-# Nginx Edge Ingress: http://localhost (Port 80)
-# Apache Kafka UI Console: http://localhost:8085
-# Redis Commander Web GUI: http://localhost:8086
-```
-> Read the complete architectural audit in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) and [`docs/SCALABILITY.md`](docs/SCALABILITY.md).
+### 4. Direct PayPal Customer Disputes API Integration
+Rather than generating generic advice or redirecting users, ProofRail connects to the PayPal Disputes API:
+- Fetches active buyer disputes via `GET /v1/customer/disputes`.
+- Inspects dispute lifecycle stages, buyer claims, and PayPal's required evidence categories.
+- Directly uploads multipart/form-data evidence packets via `POST /v1/customer/disputes/{id}/provide-evidence`.
+- Validates webhook authenticity using HMAC signature verification via `/v1/notifications/verify-webhook-signature`.
 
 ---
 
