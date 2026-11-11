@@ -8,6 +8,7 @@
 [![Frontend](https://img.shields.io/badge/Frontend-React%2019%20%2B%20Vite-61DAFB?style=for-the-badge&logo=react&logoColor=black)](client/)
 [![AI Engine](https://img.shields.io/badge/AI-Google%20Gemini%20Flash-4285F4?style=for-the-badge&logo=google&logoColor=white)](server/internal/services/ai.go)
 [![Distributed Stack](https://img.shields.io/badge/Infrastructure-Kafka%20%7C%20Redis%20%7C%20Nginx-231F20?style=for-the-badge&logo=apachekafka&logoColor=white)](docker-compose.enterprise.yml)
+[![CI/CD](https://img.shields.io/badge/CI%2FCD-Jenkins%20Pipeline-D24939?style=for-the-badge&logo=jenkins&logoColor=white)](Jenkinsfile)
 
 ---
 
@@ -274,9 +275,33 @@ ProofRail AI integrates Google Gemini API with **source-grounded prompts and str
 * **Frontend:** React 19, TypeScript, Vite, Tailwind CSS, Lucide Icons, AG Grid Community
 * **Backend:** Go 1.24+, Gin Web Engine, GORM
 * **Distributed Infrastructure:** Apache Kafka 3.7 (KRaft), Redis 7 (AOF), Nginx (Reverse Proxy & Ingress)
+* **CI/CD & DevOps:** Jenkins Automated Declarative Pipeline (`Jenkinsfile`), Docker Compose Orchestration
 * **Databases:** MySQL 8.0 (ACID Master) / SQLite (Zero-config local run)
 * **AI Provider:** Google Gemini API (`gemini-2.5-flash` with multi-model fallback cascade)
 * **Payment & Dispute Engine:** PayPal Developer Platform (Sandbox REST APIs)
+
+---
+
+## 🏗️ Automated CI/CD with Jenkins
+
+ProofRail AI includes a production-ready **Declarative Jenkins Pipeline** ([`Jenkinsfile`](Jenkinsfile)) that automates:
+1. **Automated Unit Testing & Linting:** Executes Go test suites (`go test ./...`) with financial boundary verification inside isolated containers.
+2. **Frontend Asset Compilation:** Tests React 19 / TypeScript compilation before container packaging.
+3. **Enterprise Stack Deployment:** Automatically rebuilds and rolls out the distributed stack (`docker-compose.enterprise.yml`).
+4. **Automated Smoke Tests:** Validates Nginx edge gateway routing and API `/api/health` status after container spin-up.
+
+```
+[ Git Push / Webhook ] ──> [ Jenkins Pipeline ] 
+                                  │
+      ┌───────────────────────────┼───────────────────────────┐
+      ▼                           ▼                           ▼
+[ 1. Go Unit Tests ]   [ 2. React Vite Build ]   [ 3. Docker Deploy & Smoke Test ]
+```
+
+To run a standalone Jenkins instance on port `8089`:
+```bash
+docker compose -f docker-compose.jenkins.yml up -d
+```
 
 ---
 
