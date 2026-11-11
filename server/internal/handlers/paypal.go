@@ -3,20 +3,31 @@ package handlers
 // AMOUNT AND CURRENCY ARE READ FROM THE APPROVED AGREEMENT. NEVER FROM LLM OR FRONTEND.
 
 import (
+	"context"
+	"encoding/json"
 	"io"
+	"log"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 
+	"proofrail-backend/internal/infra"
 	"proofrail-backend/internal/services"
 )
 
 type PayPalHandler struct {
 	paypalService *services.PayPalService
+	kafka         *infra.KafkaProducer
+	redis         *infra.RedisClient
 }
 
-func NewPayPalHandler(paypalService *services.PayPalService) *PayPalHandler {
-	return &PayPalHandler{paypalService: paypalService}
+func NewPayPalHandler(paypalService *services.PayPalService, kafka *infra.KafkaProducer, redis *infra.RedisClient) *PayPalHandler {
+	return &PayPalHandler{
+		paypalService: paypalService,
+		kafka:         kafka,
+		redis:         redis,
+	}
 }
 
 // AMOUNT AND CURRENCY ARE READ FROM THE APPROVED AGREEMENT. NEVER FROM LLM OR FRONTEND.
@@ -122,6 +133,11 @@ func (h *PayPalHandler) ProvideEvidence(c *gin.Context) {
 	})
 }
 
+type WebhookPayloadEnvelope struct {
+	Headers map[string][]string `json:"headers"`
+	Body    string              `json:"body"`
+}
+
 func (h *PayPalHandler) Webhook(c *gin.Context) {
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
@@ -129,10 +145,51 @@ func (h *PayPalHandler) Webhook(c *gin.Context) {
 		return
 	}
 
+	// 1. Idempotency Check with Redis
+	var parsed struct {
+		ID string `json:"id"`
+	}
+	_ = json.Unmarshal(body, &parsed)
+
+	if parsed.ID != "" && h.redis != nil && h.redis.IsAvailable() {
+		// SETNX webhook ID for 24h
+		isNew, _ := h.redis.SetNX(context.Background(), "proofrail:webhook:"+parsed.ID, "1", 24*time.Hour)
+		if !isNew {
+			log.Printf("[PayPal Webhook] Duplicate event %s ignored by Redis idempotency lock\n", parsed.ID)
+			c.JSON(http.StatusOK, gin.H{"status": "duplicate_ignored", "event_id": parsed.ID})
+			return
+		}
+	}
+
+	// 2. High-Throughput Event Streaming via Kafka
+	if h.kafka != nil && h.kafka.IsAvailable() {
+		envelope := WebhookPayloadEnvelope{
+			Headers: c.Request.Header,
+			Body:    string(body),
+		}
+
+		key := parsed.ID
+		if key == "" {
+			key = "anon"
+		}
+
+		if err := h.kafka.Publish(context.Background(), "paypal.dispute.webhooks", key, envelope); err == nil {
+			// Fast acknowledge (< 5ms response time to PayPal)
+			c.JSON(http.StatusOK, gin.H{
+				"status":    "queued",
+				"broker":    "kafka",
+				"topic":     "paypal.dispute.webhooks",
+				"event_id":  parsed.ID,
+			})
+			return
+		}
+	}
+
+	// 3. Fallback: Synchronous In-Process Execution
 	if err := h.paypalService.ProcessWebhook(c.Request.Header, body); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"status": "processed"})
+	c.JSON(http.StatusOK, gin.H{"status": "processed", "mode": "sync_fallback"})
 }

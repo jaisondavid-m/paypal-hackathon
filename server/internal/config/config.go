@@ -18,6 +18,8 @@ type Config struct {
 	LLMModel           string
 	StorageDir         string
 	AppURL             string
+	RedisURL           string
+	KafkaBrokers       string
 }
 
 func Load() *Config {
@@ -35,6 +37,8 @@ func Load() *Config {
 	llmModel := getEnv("LLM_MODEL", "gemini-3.5-flash")
 	storageDir := getEnv("STORAGE_DIR", "./uploads")
 	appURL := getEnv("APP_URL", "http://localhost:5173")
+	redisURL := getEnv("REDIS_URL", "redis://localhost:6379")
+	kafkaBrokers := getEnv("KAFKA_BROKERS", "localhost:9092")
 
 	return &Config{
 		Port:               port,
@@ -49,6 +53,8 @@ func Load() *Config {
 		LLMModel:           llmModel,
 		StorageDir:         storageDir,
 		AppURL:             appURL,
+		RedisURL:           redisURL,
+		KafkaBrokers:       kafkaBrokers,
 	}
 }
 
